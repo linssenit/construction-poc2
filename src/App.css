@@ -1,0 +1,200 @@
+.construction-viewer {
+  --panel: #ffffff;
+  --canvas: #f3f2ef;
+  --ink: #2f3d48;
+  --muted: #77828c;
+  --line: #d8d6d1;
+  --control: #f1f1f1;
+  --active: #16a9e6;
+  --shadow: 0 10px 24px rgba(35, 41, 47, 0.16);
+
+  position: relative;
+  width: 100vw;
+  min-height: 100svh;
+  overflow: hidden;
+  color: var(--ink);
+  background: var(--canvas);
+}
+
+.app-header {
+  position: absolute;
+  z-index: 20;
+  top: 0;
+  right: 0;
+  left: 0;
+  height: 74px;
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  padding: 0 28px;
+  background: rgba(255, 255, 255, 0.96);
+  box-shadow: 0 2px 12px rgba(35, 41, 47, 0.18);
+}
+
+.brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+  font-size: 24px;
+  font-weight: 700;
+  text-transform: capitalize;
+}
+
+.brand-mark {
+  display: inline-grid;
+  width: 36px;
+  height: 36px;
+  place-items: center;
+  border-radius: 50%;
+  font-weight: bold;
+}
+
+.project-title {
+  display: grid;
+  gap: 2px;
+  text-align: center;
+}
+
+.project-title span {
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.project-title strong {
+  color: var(--ink);
+  font-size: 20px;
+  line-height: 1.1;
+}
+
+.drawing-space {
+  position: absolute;
+  inset: 74px 0 0;
+  overflow: hidden;
+}
+
+.drawing-canvas {
+  position: absolute;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+  cursor: grab;
+  touch-action: none;
+}
+
+.drawing-canvas--draw {
+  cursor: crosshair;
+}
+
+.drawing-canvas:active {
+  cursor: grabbing;
+}
+
+.floating-panel {
+  position: absolute;
+  z-index: 30;
+  background: var(--panel);
+  border-radius: 8px;
+  box-shadow: var(--shadow);
+}
+
+.left-menu {
+  top: 110px;
+  left: 26px;
+  width: 80px;
+  padding: 8px;
+}
+
+.zoom-controls {
+  top: 194px;
+  right: 28px;
+  display: grid;
+  gap: 4px;
+  width: auto;
+  padding: 6px;
+  place-items: center;
+}
+
+.view-switch {
+  top: 110px;
+  right: 28px;
+  display: grid;
+  gap: 4px;
+  padding: 6px;
+  place-items: center;
+}
+
+.unit-switch {
+  bottom: 28px;
+  left: 26px;
+  display: flex;
+  padding: 4px;
+}
+
+.wall-properties {
+  bottom: 28px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  font-size: 13px;
+}
+
+.wall-properties-label {
+  color: var(--muted);
+  font-weight: 500;
+}
+
+@media (max-width: 780px) {
+  .app-header {
+    height: 68px;
+    grid-template-columns: 1fr auto;
+    padding: 0 16px;
+  }
+
+  .brand {
+    font-size: 18px;
+  }
+
+  .brand-mark {
+    width: 34px;
+    height: 34px;
+    font-size: 11px;
+  }
+
+  .project-title {
+    text-align: right;
+  }
+
+  .project-title strong {
+    font-size: 16px;
+  }
+
+  .drawing-space {
+    top: 68px;
+  }
+
+  .left-menu {
+    top: 84px;
+    left: 14px;
+    width: 72px;
+  }
+
+  .zoom-controls {
+    top: 168px;
+    right: 14px;
+  }
+
+  .view-switch {
+    top: 84px;
+    right: 14px;
+  }
+
+  .unit-switch {
+    bottom: 16px;
+    left: 14px;
+  }
+}
