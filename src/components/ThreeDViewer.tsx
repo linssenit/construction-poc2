@@ -2,6 +2,13 @@ import { useEffect, useRef } from 'react'
 import * as THREE from 'three'
 import * as OBC from '@thatopen/components'
 import type { Wall } from '@/App'
+import {
+  POLE_HEIGHT_METERS,
+  POLE_SIZE_METERS,
+  SOKKEL_HEIGHT_METERS,
+  SOKKEL_SIZE_METERS,
+  WALL_HEIGHT_METERS,
+} from '@/lib/dimensions'
 
 type ThreeDViewerProps = {
   walls: Wall[]
@@ -9,11 +16,6 @@ type ThreeDViewerProps = {
   wallWidth: number
 }
 
-const WALL_HEIGHT_METERS = 2.7
-const POLE_HEIGHT_METERS = 2.4
-const POLE_SIZE_METERS = 0.17
-const SOKKEL_HEIGHT_METERS = 0.15
-const SOKKEL_SIZE_METERS = 0.17
 const STRUCTURE_GROUP_NAME = 'structure'
 
 export function ThreeDViewer({ walls, pixelsPerMeter, wallWidth }: ThreeDViewerProps) {

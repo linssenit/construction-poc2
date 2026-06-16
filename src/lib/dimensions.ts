@@ -1,0 +1,11 @@
+export const PIXELS_PER_METER = 40
+
+export const POLE_SIZE_METERS = 0.17
+export const POLE_HEIGHT_METERS = 2.4
+
+export const SOKKEL_SIZE_METERS = 0.17
+export const SOKKEL_HEIGHT_METERS = 0.15
+
+export const WALL_HEIGHT_METERS = 2.7
+
+export const POLE_SIZE_PIXELS = POLE_SIZE_METERS * PIXELS_PER_METER

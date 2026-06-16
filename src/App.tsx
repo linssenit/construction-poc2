@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import type { PointerEvent } from 'react'
 import { Button } from "@/components/ui/button"
 import { ThreeDViewer } from "@/components/ThreeDViewer"
+import { PIXELS_PER_METER, POLE_SIZE_PIXELS } from "@/lib/dimensions"
 import './App.css'
 
 type Unit = 'mm' | 'cm' | 'm'
@@ -41,7 +42,6 @@ type HitTarget =
 const MIN_ZOOM = 0.45
 const MAX_ZOOM = 2.4
 const WALL_WIDTH = 12
-const PIXELS_PER_METER = 40
 const POLE_SNAP_PIXELS = 20
 
 const initialWalls: Wall[] = [
@@ -622,6 +622,42 @@ function drawWalls(
   walls.forEach((wall) => {
     drawWall(context, wall, wall.id === selectedWallId, false)
   })
+
+  const centroid = computeWallsCentroid(walls)
+
+  walls.forEach((wall) => {
+    const outward = getOutwardNormal(wall, centroid)
+    drawDistanceLabel(context, wall, outward)
+  })
+
+  drawPoleAngles(context, walls)
+}
+
+function computeWallsCentroid(walls: Wall[]): Point {
+  if (walls.length === 0) {
+    return { x: 0, y: 0 }
+  }
+
+  let sumX = 0
+  let sumY = 0
+
+  for (const wall of walls) {
+    sumX += wall.start.x + wall.end.x
+    sumY += wall.start.y + wall.end.y
+  }
+
+  const count = walls.length * 2
+
+  return { x: sumX / count, y: sumY / count }
+}
+
+function getOutwardNormal(wall: Wall, centroid: Point): Point {
+  const normal = getNormal(wall.start, wall.end)
+  const midX = (wall.start.x + wall.end.x) / 2
+  const midY = (wall.start.y + wall.end.y) / 2
+  const dot = normal.x * (midX - centroid.x) + normal.y * (midY - centroid.y)
+
+  return dot >= 0 ? normal : { x: -normal.x, y: -normal.y }
 }
 
 function drawWall(context: CanvasRenderingContext2D, wall: Wall, selected: boolean, draft: boolean) {
@@ -698,7 +734,6 @@ function drawWallGuides(context: CanvasRenderingContext2D, wall: Wall, draft: bo
 
   drawHandle(context, wall.start)
   drawHandle(context, wall.end)
-  drawDistanceLabel(context, wall)
   context.restore()
 }
 
@@ -714,32 +749,257 @@ function drawHandle(context: CanvasRenderingContext2D, point: Point) {
   context.restore()
 }
 
-function drawDistanceLabel(context: CanvasRenderingContext2D, wall: Wall) {
-  const label = formatDistance(getDistance(wall.start, wall.end))
-  const midpoint = {
-    x: (wall.start.x + wall.end.x) / 2,
-    y: (wall.start.y + wall.end.y) / 2,
+function drawDistanceLabel(context: CanvasRenderingContext2D, wall: Wall, normal: Point) {
+  const wallLength = getDistance(wall.start, wall.end)
+
+  if (wallLength === 0) {
+    return
   }
-  const normal = getNormal(wall.start, wall.end)
-  const x = midpoint.x + normal.x * 26
-  const y = midpoint.y + normal.y * 26
+
+  const poleProjection = getPoleProjection(wall)
+  const outerLength = wallLength + 2 * poleProjection
+  const innerLength = Math.max(0, wallLength - 2 * poleProjection)
+
+  const direction: Point = {
+    x: (wall.end.x - wall.start.x) / wallLength,
+    y: (wall.end.y - wall.start.y) / wallLength,
+  }
+
+  const innerOffset = 30
+  const outerOffset = 54
+
+  if (innerLength > 0) {
+    const innerStart = offsetPoint(
+      addScaled(wall.start, direction, poleProjection),
+      normal,
+      innerOffset,
+    )
+    const innerEnd = offsetPoint(
+      addScaled(wall.end, direction, -poleProjection),
+      normal,
+      innerOffset,
+    )
+
+    drawDimensionLine(context, innerStart, innerEnd, formatDistance(innerLength), 'secondary')
+  }
+
+  const outerStart = offsetPoint(
+    addScaled(wall.start, direction, -poleProjection),
+    normal,
+    outerOffset,
+  )
+  const outerEnd = offsetPoint(
+    addScaled(wall.end, direction, poleProjection),
+    normal,
+    outerOffset,
+  )
+
+  drawDimensionLine(context, outerStart, outerEnd, formatDistance(outerLength), 'primary')
+}
+
+function drawDimensionLine(
+  context: CanvasRenderingContext2D,
+  from: Point,
+  to: Point,
+  label: string,
+  emphasis: 'primary' | 'secondary',
+) {
+  const length = getDistance(from, to)
+
+  if (length === 0) {
+    return
+  }
+
+  const angle = Math.atan2(to.y - from.y, to.x - from.x)
+  const arrowSize = 9
+  const color = emphasis === 'primary' ? '#111111' : '#77828c'
+  const lineWidth = emphasis === 'primary' ? 1.25 : 1
+  const fontWeight = emphasis === 'primary' ? '600' : '400'
+  const fontSize = emphasis === 'primary' ? 13 : 11
 
   context.save()
-  context.font = '13px Inter, system-ui, sans-serif'
+  context.strokeStyle = color
+  context.fillStyle = color
+  context.lineWidth = lineWidth
+  context.lineCap = 'butt'
+
+  context.beginPath()
+  context.moveTo(from.x, from.y)
+  context.lineTo(to.x, to.y)
+  context.stroke()
+
+  drawArrowhead(context, from, angle + Math.PI, arrowSize)
+  drawArrowhead(context, to, angle, arrowSize)
+
+  const midX = (from.x + to.x) / 2
+  const midY = (from.y + to.y) / 2
+
+  let textAngle = angle
+  if (textAngle >= Math.PI / 2) {
+    textAngle -= Math.PI
+  } else if (textAngle < -Math.PI / 2) {
+    textAngle += Math.PI
+  }
+
+  context.translate(midX, midY)
+  context.rotate(textAngle)
+
+  context.font = `${fontWeight} ${fontSize}px Inter, system-ui, sans-serif`
   context.textAlign = 'center'
   context.textBaseline = 'middle'
 
-  const textWidth = context.measureText(label).width + 18
+  const textWidth = context.measureText(label).width
+  const padding = 5
+
+  context.fillStyle = '#f3f2ef'
+  context.fillRect(-textWidth / 2 - padding, -fontSize / 2 - 2, textWidth + padding * 2, fontSize + 4)
+
+  context.fillStyle = color
+  context.fillText(label, 0, 0)
+  context.restore()
+}
+
+function drawArrowhead(context: CanvasRenderingContext2D, tip: Point, angle: number, size: number) {
+  const baseX = tip.x - Math.cos(angle) * size
+  const baseY = tip.y - Math.sin(angle) * size
+  const halfWidth = size * 0.32
+  const perpX = -Math.sin(angle) * halfWidth
+  const perpY = Math.cos(angle) * halfWidth
+
+  context.beginPath()
+  context.moveTo(tip.x, tip.y)
+  context.lineTo(baseX + perpX, baseY + perpY)
+  context.lineTo(baseX - perpX, baseY - perpY)
+  context.closePath()
+  context.fill()
+}
+
+function offsetPoint(point: Point, direction: Point, distance: number): Point {
+  return {
+    x: point.x + direction.x * distance,
+    y: point.y + direction.y * distance,
+  }
+}
+
+function addScaled(point: Point, direction: Point, scale: number): Point {
+  return {
+    x: point.x + direction.x * scale,
+    y: point.y + direction.y * scale,
+  }
+}
+
+function getPoleProjection(wall: Wall): number {
+  const length = getDistance(wall.start, wall.end)
+
+  if (length === 0) {
+    return 0
+  }
+
+  const dirX = Math.abs(wall.end.x - wall.start.x) / length
+  const dirY = Math.abs(wall.end.y - wall.start.y) / length
+  const maxAxis = Math.max(dirX, dirY)
+
+  if (maxAxis === 0) {
+    return 0
+  }
+
+  return (POLE_SIZE_PIXELS / 2) / maxAxis
+}
+
+function drawPoleAngles(context: CanvasRenderingContext2D, walls: Wall[]) {
+  const poles = new Map<string, { position: Point; directions: number[] }>()
+
+  for (const wall of walls) {
+    const length = getDistance(wall.start, wall.end)
+
+    if (length === 0) {
+      continue
+    }
+
+    const startDir = Math.atan2(wall.end.y - wall.start.y, wall.end.x - wall.start.x)
+    const endDir = Math.atan2(wall.start.y - wall.end.y, wall.start.x - wall.end.x)
+
+    addPoleDirection(poles, wall.start, startDir)
+    addPoleDirection(poles, wall.end, endDir)
+  }
+
+  for (const { position, directions } of poles.values()) {
+    if (directions.length < 2) {
+      continue
+    }
+
+    const sorted = [...directions].sort((a, b) => a - b)
+
+    for (let i = 0; i < sorted.length; i += 1) {
+      const current = sorted[i]
+      const next = sorted[(i + 1) % sorted.length]
+      let gap = next - current
+
+      if (i === sorted.length - 1) {
+        gap = next + Math.PI * 2 - current
+      }
+
+      if (gap <= 0.01 || gap >= Math.PI - 0.01) {
+        continue
+      }
+
+      drawAngleArc(context, position, current, gap)
+    }
+  }
+}
+
+function addPoleDirection(
+  poles: Map<string, { position: Point; directions: number[] }>,
+  position: Point,
+  direction: number,
+) {
+  const key = `${Math.round(position.x)}_${Math.round(position.y)}`
+  const entry = poles.get(key)
+
+  if (entry) {
+    entry.directions.push(direction)
+    return
+  }
+
+  poles.set(key, { position, directions: [direction] })
+}
+
+function drawAngleArc(
+  context: CanvasRenderingContext2D,
+  position: Point,
+  startAngle: number,
+  gap: number,
+) {
+  const radius = 22
+  const labelDistance = radius + 12
+  const midAngle = startAngle + gap / 2
+  const labelX = position.x + Math.cos(midAngle) * labelDistance
+  const labelY = position.y + Math.sin(midAngle) * labelDistance
+  const degrees = (gap * 180) / Math.PI
+  const label = `${degrees.toFixed(1)}°`
+
+  context.save()
+  context.strokeStyle = '#77828c'
+  context.fillStyle = '#ffffff'
+  context.lineWidth = 1.25
+  context.beginPath()
+  context.arc(position.x, position.y, radius, startAngle, startAngle + gap)
+  context.stroke()
+
+  context.font = '11px Inter, system-ui, sans-serif'
+  context.textAlign = 'center'
+  context.textBaseline = 'middle'
+
+  const textWidth = context.measureText(label).width + 8
+  context.beginPath()
+  context.roundRect(labelX - textWidth / 2, labelY - 9, textWidth, 18, 4)
   context.fillStyle = '#ffffff'
   context.strokeStyle = '#d2cec7'
-  context.lineWidth = 1
-  context.beginPath()
-  context.roundRect(x - textWidth / 2, y - 13, textWidth, 26, 6)
   context.fill()
   context.stroke()
 
-  context.fillStyle = '#111111'
-  context.fillText(label, x, y)
+  context.fillStyle = '#2f3d48'
+  context.fillText(label, labelX, labelY)
   context.restore()
 }
 
