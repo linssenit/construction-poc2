@@ -139,7 +139,7 @@
   padding: 4px;
 }
 
-.wall-properties {
+.element-properties {
   bottom: 28px;
   left: 50%;
   transform: translateX(-50%);
@@ -150,7 +150,7 @@
   font-size: 13px;
 }
 
-.wall-properties-label {
+.element-properties-label {
   color: var(--muted);
   font-weight: 500;
 }

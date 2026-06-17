@@ -1,24 +1,17 @@
 import { useEffect, useRef } from 'react'
 import * as THREE from 'three'
 import * as OBC from '@thatopen/components'
-import type { Wall } from '@/App'
-import {
-  POLE_HEIGHT_METERS,
-  POLE_SIZE_METERS,
-  SOKKEL_HEIGHT_METERS,
-  SOKKEL_SIZE_METERS,
-  WALL_HEIGHT_METERS,
-} from '@/lib/dimensions'
+import { ELEMENT_MODULES, MODULE_ORDER } from '@/elements/registry'
+import type { ElementCollection } from '@/elements/types'
 
 type ThreeDViewerProps = {
-  walls: Wall[]
+  elements: ElementCollection
   pixelsPerMeter: number
-  wallWidth: number
 }
 
 const STRUCTURE_GROUP_NAME = 'structure'
 
-export function ThreeDViewer({ walls, pixelsPerMeter, wallWidth }: ThreeDViewerProps) {
+export function ThreeDViewer({ elements, pixelsPerMeter }: ThreeDViewerProps) {
   const containerRef = useRef<HTMLDivElement | null>(null)
   const worldRef = useRef<{
     components: OBC.Components
@@ -73,79 +66,31 @@ export function ThreeDViewer({ walls, pixelsPerMeter, wallWidth }: ThreeDViewerP
       disposeGroup(previous)
     }
 
-    const group = buildStructureGroup(walls, pixelsPerMeter, wallWidth)
+    const group = buildStructureGroup(elements, pixelsPerMeter)
     scene.add(group)
-  }, [walls, pixelsPerMeter, wallWidth])
+  }, [elements, pixelsPerMeter])
 
   return <div ref={containerRef} className="drawing-canvas" aria-label="3D construction view" />
 }
 
-function buildStructureGroup(walls: Wall[], pixelsPerMeter: number, wallWidth: number) {
+function buildStructureGroup(elements: ElementCollection, pixelsPerMeter: number) {
   const group = new THREE.Group()
   group.name = STRUCTURE_GROUP_NAME
 
-  const thickness = wallWidth / pixelsPerMeter
-  const wallMaterial = new THREE.MeshStandardMaterial({ color: 0xeeeeee })
-  const poleMaterial = new THREE.MeshStandardMaterial({ color: 0x8b6f47, roughness: 0.7 })
-  const sokkelMaterial = new THREE.MeshStandardMaterial({ color: 0x3a4956, roughness: 0.5 })
+  for (const type of MODULE_ORDER) {
+    const mod = ELEMENT_MODULES[type]
+    const slice = elements[type] ?? []
 
-  for (const wall of walls) {
-    if (!wall.hasInfill) {
-      continue
+    for (const el of slice) {
+      mod.build3d(el, { group, pixelsPerMeter, allElements: elements })
     }
 
-    const startX = wall.start.x / pixelsPerMeter
-    const startZ = wall.start.y / pixelsPerMeter
-    const endX = wall.end.x / pixelsPerMeter
-    const endZ = wall.end.y / pixelsPerMeter
-
-    const length = Math.hypot(endX - startX, endZ - startZ)
-
-    if (length === 0) {
-      continue
+    if (mod.extras?.build3d) {
+      mod.extras.build3d(slice, { group, pixelsPerMeter, allElements: elements })
     }
-
-    const geometry = new THREE.BoxGeometry(length, WALL_HEIGHT_METERS, thickness)
-    const mesh = new THREE.Mesh(geometry, wallMaterial)
-
-    mesh.position.set((startX + endX) / 2, WALL_HEIGHT_METERS / 2, (startZ + endZ) / 2)
-    mesh.rotation.y = -Math.atan2(endZ - startZ, endX - startX)
-
-    group.add(mesh)
-  }
-
-  const sokkelGeometry = new THREE.BoxGeometry(SOKKEL_SIZE_METERS, SOKKEL_HEIGHT_METERS, SOKKEL_SIZE_METERS)
-  const poleGeometry = new THREE.BoxGeometry(POLE_SIZE_METERS, POLE_HEIGHT_METERS, POLE_SIZE_METERS)
-
-  for (const { x, z } of getUniqueEndpoints(walls, pixelsPerMeter)) {
-    const sokkel = new THREE.Mesh(sokkelGeometry, sokkelMaterial)
-    sokkel.position.set(x, SOKKEL_HEIGHT_METERS / 2, z)
-    group.add(sokkel)
-
-    const pole = new THREE.Mesh(poleGeometry, poleMaterial)
-    pole.position.set(x, SOKKEL_HEIGHT_METERS + POLE_HEIGHT_METERS / 2, z)
-    group.add(pole)
   }
 
   return group
-}
-
-function getUniqueEndpoints(walls: Wall[], pixelsPerMeter: number) {
-  const seen = new Map<string, { x: number; z: number }>()
-
-  for (const wall of walls) {
-    for (const point of [wall.start, wall.end]) {
-      const x = point.x / pixelsPerMeter
-      const z = point.y / pixelsPerMeter
-      const key = `${Math.round(x * 1000)}_${Math.round(z * 1000)}`
-
-      if (!seen.has(key)) {
-        seen.set(key, { x, z })
-      }
-    }
-  }
-
-  return seen.values()
 }
 
 function disposeGroup(group: THREE.Object3D) {
