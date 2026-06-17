@@ -13,10 +13,10 @@ import type { Wall, WallDraft } from './types'
 import { WALL_TYPE } from './types'
 
 const initialWalls: Wall[] = [
-  { id: 1, type: WALL_TYPE, start: { x: -260, y: -125 }, end: { x: 260, y: -125 }, hasInfill: true },
-  { id: 2, type: WALL_TYPE, start: { x: 260, y: -125 }, end: { x: 260, y: 125 }, hasInfill: true },
-  { id: 3, type: WALL_TYPE, start: { x: 260, y: 125 }, end: { x: -260, y: 125 }, hasInfill: true },
-  { id: 4, type: WALL_TYPE, start: { x: -260, y: 125 }, end: { x: -260, y: -125 }, hasInfill: true },
+  { id: 1, type: WALL_TYPE, start: { x: -260, y: -125 }, end: { x: 260, y: -125 }, hasInfill: false },
+  { id: 2, type: WALL_TYPE, start: { x: 260, y: -125 }, end: { x: 260, y: 125 }, hasInfill: false },
+  { id: 3, type: WALL_TYPE, start: { x: 260, y: 125 }, end: { x: -260, y: 125 }, hasInfill: false },
+  { id: 4, type: WALL_TYPE, start: { x: -260, y: 125 }, end: { x: -260, y: -125 }, hasInfill: false },
 ]
 
 export const wallModule: ElementModule<Wall, WallDraft> = {

@@ -112,7 +112,7 @@ function App() {
     resizeObserver.observe(canvasWrap)
 
     return () => resizeObserver.disconnect()
-  }, [elements, draft, selected, snapTarget, viewport])
+  }, [elements, draft, selected, snapTarget, viewport, viewMode])
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -202,7 +202,7 @@ function App() {
 
     canvas.addEventListener('wheel', onWheel, { passive: false })
     return () => canvas.removeEventListener('wheel', onWheel)
-  }, [])
+  }, [viewMode])
 
   const handlePointerDown = (event: PointerEvent<HTMLCanvasElement>) => {
     const worldPoint = getWorldPoint(event)
