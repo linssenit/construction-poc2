@@ -67,6 +67,13 @@
   line-height: 1.1;
 }
 
+.header-actions {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 8px;
+}
+
 .drawing-space {
   position: absolute;
   inset: 74px 0 0;
@@ -151,7 +158,8 @@
 @media (max-width: 780px) {
   .app-header {
     height: 68px;
-    grid-template-columns: 1fr auto;
+    grid-template-columns: 1fr auto auto;
+    gap: 12px;
     padding: 0 16px;
   }
 
