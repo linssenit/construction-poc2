@@ -2,12 +2,9 @@ import * as THREE from 'three'
 import { PIXELS_PER_METER, POLE_HEIGHT_METERS, POLE_SIZE_METERS, SOKKEL_HEIGHT_METERS, SOKKEL_SIZE_METERS } from '@/lib/dimensions'
 import { getDistance } from '@/lib/geometry'
 import type { Point } from '@/lib/geometry'
-import {
-  ifcGuid,
-  writeBoxShape,
-  writeLocalPlacement,
-} from '@/lib/ifc/writer'
-import type { ElementExtras, IfcCtx } from '@/elements/types'
+import { Handle, IFC4 } from 'web-ifc'
+import { makeBoxShape, makeLocalPlacement, newGuid } from '@/lib/ifc/writer'
+import type { ElementExtras, IfcCtx, IfcProductHandle } from '@/elements/types'
 import type { Wall } from '../types'
 
 const poleMaterial = new THREE.MeshStandardMaterial({ color: 0x8b6f47, roughness: 0.7 })
@@ -33,33 +30,76 @@ export const wallPolesExtras: ElementExtras<Wall> = {
     }
   },
   writeIfc(walls, ctx) {
-    const ids: number[] = []
+    const handles: IfcProductHandle[] = []
 
     for (const [x, y] of getUniqueEndpointsForIfc(walls)) {
-      ids.push(writeSokkel(ctx, x, y))
-      ids.push(writePole(ctx, x, y))
+      handles.push(writeSokkel(ctx, x, y))
+      handles.push(writePole(ctx, x, y))
     }
 
-    return ids
+    return handles
   },
 }
 
-function writeSokkel(ctx: IfcCtx, x: number, y: number): number {
-  const placement = writeLocalPlacement(ctx.writer, ctx.refs.storeyPlacement, x, y, 0, 1, 0)
-  const shape = writeBoxShape(ctx.writer, ctx.refs.context, SOKKEL_SIZE_METERS, SOKKEL_SIZE_METERS, SOKKEL_HEIGHT_METERS)
-
-  return ctx.writer.add(
-    `IFCFOOTING('${ifcGuid()}',#${ctx.refs.ownerHistory},'Sokkel',$,$,#${placement},#${shape},$,.PAD_FOOTING.)`,
+function writeSokkel(ctx: IfcCtx, x: number, y: number): IfcProductHandle {
+  const placement = makeLocalPlacement(ctx.api, ctx.modelID, ctx.refs.storeyPlacement, x, y, 0, 1, 0)
+  const shape = makeBoxShape(
+    ctx.api,
+    ctx.modelID,
+    ctx.refs.context,
+    SOKKEL_SIZE_METERS,
+    SOKKEL_SIZE_METERS,
+    SOKKEL_HEIGHT_METERS,
   )
+
+  const entity = new IFC4.IfcFooting(
+    newGuid(ctx.api, ctx.modelID),
+    ctx.refs.ownerHistory,
+    new IFC4.IfcLabel('Sokkel'),
+    null,
+    null,
+    placement,
+    shape,
+    null,
+    IFC4.IfcFootingTypeEnum.PAD_FOOTING,
+  )
+  ctx.api.WriteLine(ctx.modelID, entity)
+  return new Handle<IFC4.IfcFooting>(entity.expressID)
 }
 
-function writePole(ctx: IfcCtx, x: number, y: number): number {
-  const placement = writeLocalPlacement(ctx.writer, ctx.refs.storeyPlacement, x, y, SOKKEL_HEIGHT_METERS, 1, 0)
-  const shape = writeBoxShape(ctx.writer, ctx.refs.context, POLE_SIZE_METERS, POLE_SIZE_METERS, POLE_HEIGHT_METERS)
-
-  return ctx.writer.add(
-    `IFCCOLUMN('${ifcGuid()}',#${ctx.refs.ownerHistory},'Pole',$,$,#${placement},#${shape},$,.COLUMN.)`,
+function writePole(ctx: IfcCtx, x: number, y: number): IfcProductHandle {
+  const placement = makeLocalPlacement(
+    ctx.api,
+    ctx.modelID,
+    ctx.refs.storeyPlacement,
+    x,
+    y,
+    SOKKEL_HEIGHT_METERS,
+    1,
+    0,
   )
+  const shape = makeBoxShape(
+    ctx.api,
+    ctx.modelID,
+    ctx.refs.context,
+    POLE_SIZE_METERS,
+    POLE_SIZE_METERS,
+    POLE_HEIGHT_METERS,
+  )
+
+  const entity = new IFC4.IfcColumn(
+    newGuid(ctx.api, ctx.modelID),
+    ctx.refs.ownerHistory,
+    new IFC4.IfcLabel('Pole'),
+    null,
+    null,
+    placement,
+    shape,
+    null,
+    IFC4.IfcColumnTypeEnum.COLUMN,
+  )
+  ctx.api.WriteLine(ctx.modelID, entity)
+  return new Handle<IFC4.IfcColumn>(entity.expressID)
 }
 
 function getUniqueEndpointsMeters(walls: Wall[]): Array<{ x: number; z: number }> {

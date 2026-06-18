@@ -1,40 +1,49 @@
-import {
-  createWriter,
-  wrapIfc,
-  writeProjectScaffold,
-  writeSpatialContainment,
-} from '@/lib/ifc/writer'
+import { getIfcAPI } from '@/lib/ifc/api'
+import { IFC_SCHEMA, writeProjectScaffold, writeSpatialContainment } from '@/lib/ifc/writer'
 import { ELEMENT_MODULES, MODULE_ORDER } from '@/elements/registry'
-import type { ElementCollection } from '@/elements/types'
+import type { ElementCollection, IfcProductHandle } from '@/elements/types'
 
-export function generateIfc(elements: ElementCollection): string {
-  const writer = createWriter()
-  const { refs, storey } = writeProjectScaffold(writer)
-  const ids: number[] = []
+export async function generateIfc(elements: ElementCollection): Promise<Uint8Array> {
+  const api = await getIfcAPI()
+  const modelID = api.CreateModel({
+    schema: IFC_SCHEMA,
+    name: 'kommerce-export.ifc',
+    description: ['ViewDefinition [CoordinationView]'],
+    authors: ['Kommerce Construction Viewer'],
+    organizations: ['Kommerce'],
+  })
 
-  for (const type of MODULE_ORDER) {
-    const mod = ELEMENT_MODULES[type]
-    const slice = elements[type] ?? []
+  try {
+    const { refs, storey } = writeProjectScaffold(api, modelID)
+    const handles: IfcProductHandle[] = []
+    const ctx = { api, modelID, refs, allElements: elements }
 
-    for (const el of slice) {
-      const id = mod.writeIfc(el, { writer, refs, allElements: elements })
-      if (id !== null) {
-        ids.push(id)
+    for (const type of MODULE_ORDER) {
+      const mod = ELEMENT_MODULES[type]
+      const slice = elements[type] ?? []
+
+      for (const el of slice) {
+        const handle = mod.writeIfc(el, ctx)
+        if (handle) {
+          handles.push(handle)
+        }
+      }
+
+      if (mod.extras?.writeIfc) {
+        handles.push(...mod.extras.writeIfc(slice, ctx))
       }
     }
 
-    if (mod.extras?.writeIfc) {
-      ids.push(...mod.extras.writeIfc(slice, { writer, refs, allElements: elements }))
-    }
+    writeSpatialContainment(api, modelID, refs, storey, handles)
+    return api.SaveModel(modelID)
+  } finally {
+    api.CloseModel(modelID)
   }
-
-  writeSpatialContainment(writer, refs, storey, ids)
-  return wrapIfc(writer.lines)
 }
 
-export function downloadIfc(elements: ElementCollection, filename = 'kommerce-export.ifc') {
-  const content = generateIfc(elements)
-  const blob = new Blob([content], { type: 'application/x-step' })
+export async function downloadIfc(elements: ElementCollection, filename = 'kommerce-export.ifc') {
+  const bytes = await generateIfc(elements)
+  const blob = new Blob([bytes as BlobPart], { type: 'application/x-step' })
   const url = URL.createObjectURL(blob)
   const link = document.createElement('a')
 

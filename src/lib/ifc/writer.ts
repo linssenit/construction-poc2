@@ -1,97 +1,270 @@
-export type IfcWriter = {
-  add: (entity: string) => number
-  lines: string[]
+import { Handle, IFC4, IfcLineObject } from 'web-ifc'
+import type { IfcAPI } from 'web-ifc'
+
+export const IFC_SCHEMA = 'IFC4' as const
+
+export interface SharedRefs {
+  ownerHistory: Handle<IFC4.IfcOwnerHistory>
+  storeyPlacement: Handle<IFC4.IfcLocalPlacement>
+  context: Handle<IFC4.IfcGeometricRepresentationContext>
 }
 
-export type SharedRefs = {
-  ownerHistory: number
-  storeyPlacement: number
-  context: number
+export interface ScaffoldResult {
+  refs: SharedRefs
+  storey: Handle<IFC4.IfcBuildingStorey>
 }
 
-export function createWriter(): IfcWriter {
-  const lines: string[] = []
-  let id = 0
-
-  return {
-    lines,
-    add: (entity: string) => {
-      id += 1
-      lines.push(`#${id}=${entity};`)
-      return id
-    },
-  }
+export function newGuid(api: IfcAPI, modelID: number): IFC4.IfcGloballyUniqueId {
+  return api.CreateIFCGloballyUniqueId(modelID) as IFC4.IfcGloballyUniqueId
 }
 
-export function num(n: number): string {
-  const safe = Object.is(n, -0) ? 0 : n
-  const fixed = parseFloat(safe.toFixed(6)).toString()
-  return fixed.includes('.') ? fixed : `${fixed}.`
+function write<T extends IfcLineObject>(api: IfcAPI, modelID: number, entity: T): Handle<T> {
+  api.WriteLine(modelID, entity)
+  return new Handle<T>(entity.expressID)
 }
 
-const GUID_CHARS = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz_$'
-
-export function ifcGuid(): string {
-  let result = ''
-  for (let i = 0; i < 22; i += 1) {
-    result += GUID_CHARS[Math.floor(Math.random() * 64)]
-  }
-  return result
+function point3d(x: number, y: number, z: number): IFC4.IfcCartesianPoint {
+  return new IFC4.IfcCartesianPoint([
+    new IFC4.IfcLengthMeasure(x),
+    new IFC4.IfcLengthMeasure(y),
+    new IFC4.IfcLengthMeasure(z),
+  ])
 }
 
-function ifcTimestamp(): string {
-  const now = new Date()
-  const pad = (n: number) => n.toString().padStart(2, '0')
-  return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}T${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`
+function point2d(x: number, y: number): IFC4.IfcCartesianPoint {
+  return new IFC4.IfcCartesianPoint([
+    new IFC4.IfcLengthMeasure(x),
+    new IFC4.IfcLengthMeasure(y),
+  ])
 }
 
-export function writeProjectScaffold(writer: IfcWriter): { refs: SharedRefs; storey: number } {
-  const origin = writer.add('IFCCARTESIANPOINT((0.,0.,0.))')
-  const zAxis = writer.add('IFCDIRECTION((0.,0.,1.))')
-  const xAxis = writer.add('IFCDIRECTION((1.,0.,0.))')
-  const worldAxis = writer.add(`IFCAXIS2PLACEMENT3D(#${origin},#${zAxis},#${xAxis})`)
+function direction3d(x: number, y: number, z: number): IFC4.IfcDirection {
+  return new IFC4.IfcDirection([new IFC4.IfcReal(x), new IFC4.IfcReal(y), new IFC4.IfcReal(z)])
+}
 
-  const person = writer.add(`IFCPERSON($,$,'',$,$,$,$,$)`)
-  const org = writer.add(`IFCORGANIZATION($,'Kommerce',$,$,$)`)
-  const personOrg = writer.add(`IFCPERSONANDORGANIZATION(#${person},#${org},$)`)
-  const app = writer.add(`IFCAPPLICATION(#${org},'1.0','Kommerce Construction Viewer','kommerce')`)
-  const ownerHistory = writer.add(
-    `IFCOWNERHISTORY(#${personOrg},#${app},$,.ADDED.,$,$,$,${Math.floor(Date.now() / 1000)})`,
+function direction2d(x: number, y: number): IFC4.IfcDirection {
+  return new IFC4.IfcDirection([new IFC4.IfcReal(x), new IFC4.IfcReal(y)])
+}
+
+function axis3d(origin: IFC4.IfcCartesianPoint, axis: IFC4.IfcDirection, refDir: IFC4.IfcDirection) {
+  return new IFC4.IfcAxis2Placement3D(origin, axis, refDir)
+}
+
+export function makeLocalPlacement(
+  api: IfcAPI,
+  modelID: number,
+  parent: Handle<IFC4.IfcObjectPlacement> | null,
+  x: number,
+  y: number,
+  z: number,
+  dirX: number,
+  dirY: number,
+): Handle<IFC4.IfcLocalPlacement> {
+  const placement = new IFC4.IfcLocalPlacement(
+    parent,
+    axis3d(point3d(x, y, z), direction3d(0, 0, 1), direction3d(dirX, dirY, 0)),
+  )
+  return write(api, modelID, placement)
+}
+
+export function makeBoxShape(
+  api: IfcAPI,
+  modelID: number,
+  context: Handle<IFC4.IfcGeometricRepresentationContext>,
+  xDim: number,
+  yDim: number,
+  height: number,
+): Handle<IFC4.IfcProductDefinitionShape> {
+  const profile = new IFC4.IfcRectangleProfileDef(
+    IFC4.IfcProfileTypeEnum.AREA,
+    null,
+    new IFC4.IfcAxis2Placement2D(point2d(0, 0), direction2d(1, 0)),
+    new IFC4.IfcPositiveLengthMeasure(xDim),
+    new IFC4.IfcPositiveLengthMeasure(yDim),
   )
 
-  const m = writer.add(`IFCSIUNIT(*,.LENGTHUNIT.,$,.METRE.)`)
-  const m2 = writer.add(`IFCSIUNIT(*,.AREAUNIT.,$,.SQUARE_METRE.)`)
-  const m3 = writer.add(`IFCSIUNIT(*,.VOLUMEUNIT.,$,.CUBIC_METRE.)`)
-  const rad = writer.add(`IFCSIUNIT(*,.PLANEANGLEUNIT.,$,.RADIAN.)`)
-  const units = writer.add(`IFCUNITASSIGNMENT((#${m},#${m2},#${m3},#${rad}))`)
-
-  const context = writer.add(
-    `IFCGEOMETRICREPRESENTATIONCONTEXT($,'Model',3,1.E-05,#${worldAxis},$)`,
+  const solid = new IFC4.IfcExtrudedAreaSolid(
+    profile,
+    axis3d(point3d(0, 0, 0), direction3d(0, 0, 1), direction3d(1, 0, 0)),
+    direction3d(0, 0, 1),
+    new IFC4.IfcPositiveLengthMeasure(height),
   )
 
-  const projectPlacement = writer.add(`IFCLOCALPLACEMENT($,#${worldAxis})`)
-  const project = writer.add(
-    `IFCPROJECT('${ifcGuid()}',#${ownerHistory},'Example House',$,$,$,$,(#${context}),#${units})`,
+  const shape = new IFC4.IfcProductDefinitionShape(null, null, [
+    new IFC4.IfcShapeRepresentation(
+      context,
+      new IFC4.IfcLabel('Body'),
+      new IFC4.IfcLabel('SweptSolid'),
+      [solid],
+    ),
+  ])
+
+  return write(api, modelID, shape)
+}
+
+export function writeProjectScaffold(api: IfcAPI, modelID: number): ScaffoldResult {
+  const person = write(api, modelID, new IFC4.IfcPerson(null, null, null, null, null, null, null, null))
+  const org = write(api, modelID, new IFC4.IfcOrganization(null, new IFC4.IfcLabel('Kommerce'), null, null, null))
+  const personOrg = write(api, modelID, new IFC4.IfcPersonAndOrganization(person, org, null))
+  const app = write(
+    api,
+    modelID,
+    new IFC4.IfcApplication(
+      org,
+      new IFC4.IfcLabel('1.0'),
+      new IFC4.IfcLabel('Kommerce Construction Viewer'),
+      new IFC4.IfcIdentifier('kommerce'),
+    ),
+  )
+  const ownerHistory = write(
+    api,
+    modelID,
+    new IFC4.IfcOwnerHistory(
+      personOrg,
+      app,
+      null,
+      IFC4.IfcChangeActionEnum.ADDED,
+      null,
+      null,
+      null,
+      new IFC4.IfcTimeStamp(Math.floor(Date.now() / 1000)),
+    ),
   )
 
-  const sitePlacement = writer.add(`IFCLOCALPLACEMENT(#${projectPlacement},#${worldAxis})`)
-  const site = writer.add(
-    `IFCSITE('${ifcGuid()}',#${ownerHistory},'Default Site',$,$,#${sitePlacement},$,$,.ELEMENT.,$,$,$,$,$)`,
+  const m = write(api, modelID, new IFC4.IfcSIUnit(IFC4.IfcUnitEnum.LENGTHUNIT, null, IFC4.IfcSIUnitName.METRE))
+  const m2 = write(api, modelID, new IFC4.IfcSIUnit(IFC4.IfcUnitEnum.AREAUNIT, null, IFC4.IfcSIUnitName.SQUARE_METRE))
+  const m3 = write(api, modelID, new IFC4.IfcSIUnit(IFC4.IfcUnitEnum.VOLUMEUNIT, null, IFC4.IfcSIUnitName.CUBIC_METRE))
+  const rad = write(api, modelID, new IFC4.IfcSIUnit(IFC4.IfcUnitEnum.PLANEANGLEUNIT, null, IFC4.IfcSIUnitName.RADIAN))
+  const units = write(api, modelID, new IFC4.IfcUnitAssignment([m, m2, m3, rad]))
+
+  const worldAxis = write(
+    api,
+    modelID,
+    axis3d(point3d(0, 0, 0), direction3d(0, 0, 1), direction3d(1, 0, 0)),
   )
 
-  const buildingPlacement = writer.add(`IFCLOCALPLACEMENT(#${sitePlacement},#${worldAxis})`)
-  const building = writer.add(
-    `IFCBUILDING('${ifcGuid()}',#${ownerHistory},'Default Building',$,$,#${buildingPlacement},$,$,.ELEMENT.,$,$,$)`,
+  const context = write(
+    api,
+    modelID,
+    new IFC4.IfcGeometricRepresentationContext(
+      null,
+      new IFC4.IfcLabel('Model'),
+      new IFC4.IfcDimensionCount(3),
+      new IFC4.IfcReal(1e-5),
+      worldAxis,
+      null,
+    ),
   )
 
-  const storeyPlacement = writer.add(`IFCLOCALPLACEMENT(#${buildingPlacement},#${worldAxis})`)
-  const storey = writer.add(
-    `IFCBUILDINGSTOREY('${ifcGuid()}',#${ownerHistory},'Ground Floor',$,$,#${storeyPlacement},$,$,.ELEMENT.,0.)`,
+  const projectPlacement = write(
+    api,
+    modelID,
+    new IFC4.IfcLocalPlacement(
+      null,
+      axis3d(point3d(0, 0, 0), direction3d(0, 0, 1), direction3d(1, 0, 0)),
+    ),
   )
 
-  writer.add(`IFCRELAGGREGATES('${ifcGuid()}',#${ownerHistory},$,$,#${project},(#${site}))`)
-  writer.add(`IFCRELAGGREGATES('${ifcGuid()}',#${ownerHistory},$,$,#${site},(#${building}))`)
-  writer.add(`IFCRELAGGREGATES('${ifcGuid()}',#${ownerHistory},$,$,#${building},(#${storey}))`)
+  const project = write(
+    api,
+    modelID,
+    new IFC4.IfcProject(
+      newGuid(api, modelID),
+      ownerHistory,
+      new IFC4.IfcLabel('Example House'),
+      null,
+      null,
+      null,
+      null,
+      [context],
+      units,
+    ),
+  )
+
+  const sitePlacement = write(
+    api,
+    modelID,
+    new IFC4.IfcLocalPlacement(
+      projectPlacement,
+      axis3d(point3d(0, 0, 0), direction3d(0, 0, 1), direction3d(1, 0, 0)),
+    ),
+  )
+  const site = write(
+    api,
+    modelID,
+    new IFC4.IfcSite(
+      newGuid(api, modelID),
+      ownerHistory,
+      new IFC4.IfcLabel('Default Site'),
+      null,
+      null,
+      sitePlacement,
+      null,
+      null,
+      IFC4.IfcElementCompositionEnum.ELEMENT,
+      null,
+      null,
+      null,
+      null,
+      null,
+    ),
+  )
+
+  const buildingPlacement = write(
+    api,
+    modelID,
+    new IFC4.IfcLocalPlacement(
+      sitePlacement,
+      axis3d(point3d(0, 0, 0), direction3d(0, 0, 1), direction3d(1, 0, 0)),
+    ),
+  )
+  const building = write(
+    api,
+    modelID,
+    new IFC4.IfcBuilding(
+      newGuid(api, modelID),
+      ownerHistory,
+      new IFC4.IfcLabel('Default Building'),
+      null,
+      null,
+      buildingPlacement,
+      null,
+      null,
+      IFC4.IfcElementCompositionEnum.ELEMENT,
+      null,
+      null,
+      null,
+    ),
+  )
+
+  const storeyPlacement = write(
+    api,
+    modelID,
+    new IFC4.IfcLocalPlacement(
+      buildingPlacement,
+      axis3d(point3d(0, 0, 0), direction3d(0, 0, 1), direction3d(1, 0, 0)),
+    ),
+  )
+  const storey = write(
+    api,
+    modelID,
+    new IFC4.IfcBuildingStorey(
+      newGuid(api, modelID),
+      ownerHistory,
+      new IFC4.IfcLabel('Ground Floor'),
+      null,
+      null,
+      storeyPlacement,
+      null,
+      null,
+      IFC4.IfcElementCompositionEnum.ELEMENT,
+      new IFC4.IfcLengthMeasure(0),
+    ),
+  )
+
+  write(api, modelID, new IFC4.IfcRelAggregates(newGuid(api, modelID), ownerHistory, null, null, project, [site]))
+  write(api, modelID, new IFC4.IfcRelAggregates(newGuid(api, modelID), ownerHistory, null, null, site, [building]))
+  write(api, modelID, new IFC4.IfcRelAggregates(newGuid(api, modelID), ownerHistory, null, null, building, [storey]))
 
   return {
     refs: { ownerHistory, storeyPlacement, context },
@@ -100,78 +273,26 @@ export function writeProjectScaffold(writer: IfcWriter): { refs: SharedRefs; sto
 }
 
 export function writeSpatialContainment(
-  writer: IfcWriter,
+  api: IfcAPI,
+  modelID: number,
   refs: SharedRefs,
-  storey: number,
-  elementIds: number[],
-) {
-  if (elementIds.length === 0) {
+  storey: Handle<IFC4.IfcBuildingStorey>,
+  elementHandles: Handle<IFC4.IfcProduct>[],
+): void {
+  if (elementHandles.length === 0) {
     return
   }
 
-  const list = elementIds.map((id) => `#${id}`).join(',')
-  writer.add(
-    `IFCRELCONTAINEDINSPATIALSTRUCTURE('${ifcGuid()}',#${refs.ownerHistory},$,$,(${list}),#${storey})`,
+  write(
+    api,
+    modelID,
+    new IFC4.IfcRelContainedInSpatialStructure(
+      newGuid(api, modelID),
+      refs.ownerHistory,
+      null,
+      null,
+      elementHandles,
+      storey,
+    ),
   )
-}
-
-export function writeLocalPlacement(
-  writer: IfcWriter,
-  parent: number,
-  x: number,
-  y: number,
-  z: number,
-  dirX: number,
-  dirY: number,
-): number {
-  const point = writer.add(`IFCCARTESIANPOINT((${num(x)},${num(y)},${num(z)}))`)
-  const zAxis = writer.add(`IFCDIRECTION((0.,0.,1.))`)
-  const xAxis = writer.add(`IFCDIRECTION((${num(dirX)},${num(dirY)},0.))`)
-  const axis = writer.add(`IFCAXIS2PLACEMENT3D(#${point},#${zAxis},#${xAxis})`)
-
-  return writer.add(`IFCLOCALPLACEMENT(#${parent},#${axis})`)
-}
-
-export function writeBoxShape(
-  writer: IfcWriter,
-  context: number,
-  xDim: number,
-  yDim: number,
-  height: number,
-): number {
-  const profileCenter = writer.add(`IFCCARTESIANPOINT((0.,0.))`)
-  const profileX = writer.add(`IFCDIRECTION((1.,0.))`)
-  const profilePlacement = writer.add(`IFCAXIS2PLACEMENT2D(#${profileCenter},#${profileX})`)
-  const profile = writer.add(
-    `IFCRECTANGLEPROFILEDEF(.AREA.,$,#${profilePlacement},${num(xDim)},${num(yDim)})`,
-  )
-
-  const extOrigin = writer.add(`IFCCARTESIANPOINT((0.,0.,0.))`)
-  const extZ = writer.add(`IFCDIRECTION((0.,0.,1.))`)
-  const extX = writer.add(`IFCDIRECTION((1.,0.,0.))`)
-  const extPlacement = writer.add(`IFCAXIS2PLACEMENT3D(#${extOrigin},#${extZ},#${extX})`)
-  const extDir = writer.add(`IFCDIRECTION((0.,0.,1.))`)
-  const solid = writer.add(
-    `IFCEXTRUDEDAREASOLID(#${profile},#${extPlacement},#${extDir},${num(height)})`,
-  )
-
-  const rep = writer.add(`IFCSHAPEREPRESENTATION(#${context},'Body','SweptSolid',(#${solid}))`)
-
-  return writer.add(`IFCPRODUCTDEFINITIONSHAPE($,$,(#${rep}))`)
-}
-
-export function wrapIfc(lines: string[]): string {
-  return [
-    `ISO-10303-21;`,
-    `HEADER;`,
-    `FILE_DESCRIPTION(('ViewDefinition [CoordinationView_V2.0]'),'2;1');`,
-    `FILE_NAME('export.ifc','${ifcTimestamp()}',(''),(''),'Kommerce Construction Viewer','Kommerce','');`,
-    `FILE_SCHEMA(('IFC2X3'));`,
-    `ENDSEC;`,
-    `DATA;`,
-    ...lines,
-    `ENDSEC;`,
-    `END-ISO-10303-21;`,
-    '',
-  ].join('\n')
 }

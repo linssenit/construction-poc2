@@ -1,7 +1,8 @@
 import type { ComponentType, ReactNode } from 'react'
 import type * as THREE from 'three'
+import type { Handle, IfcAPI, IFC4 } from 'web-ifc'
 import type { Point } from '@/lib/geometry'
-import type { IfcWriter, SharedRefs } from '@/lib/ifc/writer'
+import type { SharedRefs } from '@/lib/ifc/writer'
 
 export type ElementType = string
 export type ElementId = number
@@ -50,10 +51,13 @@ export interface Build3dCtx {
 }
 
 export interface IfcCtx {
-  writer: IfcWriter
+  api: IfcAPI
+  modelID: number
   refs: SharedRefs
   allElements: ElementCollection
 }
+
+export type IfcProductHandle = Handle<IFC4.IfcProduct>
 
 export interface ToolCtx {
   worldPoint: Point
@@ -65,7 +69,7 @@ export interface ToolCtx {
 export interface ElementExtras<E extends BaseElement> {
   draw2d?: (elements: E[], ctx: Omit<Draw2dCtx, 'selected' | 'isDraft'>) => void
   build3d?: (elements: E[], ctx: Build3dCtx) => void
-  writeIfc?: (elements: E[], ctx: IfcCtx) => number[]
+  writeIfc?: (elements: E[], ctx: IfcCtx) => IfcProductHandle[]
   getSnapPoints?: (elements: E[]) => SnapPoint[]
 }
 
@@ -93,7 +97,7 @@ export interface ElementModule<E extends BaseElement, D = E> {
   moveHandle?: (element: E, handleId: string, ctx: ToolCtx) => E
 
   build3d: (element: E, ctx: Build3dCtx) => void
-  writeIfc: (element: E, ctx: IfcCtx) => number | null
+  writeIfc: (element: E, ctx: IfcCtx) => IfcProductHandle | null
 
   renderProperties?: (props: { element: E; onChange: (next: E) => void }) => ReactNode
 

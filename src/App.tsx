@@ -377,7 +377,7 @@ function App() {
           <strong>Example House</strong>
         </div>
         <div className="header-actions">
-          <Button size="sm" className="h-9 px-4 gap-2" onClick={() => downloadIfc(elements)}>
+          <Button size="sm" className="h-9 px-4 gap-2" onClick={() => { void downloadIfc(elements) }}>
             <ExportIcon />
             <span>Export</span>
           </Button>

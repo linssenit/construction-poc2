@@ -1,14 +1,11 @@
+import { Handle, IFC4 } from 'web-ifc'
 import { PIXELS_PER_METER, WALL_HEIGHT_METERS } from '@/lib/dimensions'
-import {
-  ifcGuid,
-  writeBoxShape,
-  writeLocalPlacement,
-} from '@/lib/ifc/writer'
-import type { IfcCtx } from '@/elements/types'
+import { makeBoxShape, makeLocalPlacement, newGuid } from '@/lib/ifc/writer'
+import type { IfcCtx, IfcProductHandle } from '@/elements/types'
 import type { Wall } from './types'
 import { WALL_WIDTH } from './types'
 
-export function writeWallIfc(wall: Wall, ctx: IfcCtx): number | null {
+export function writeWallIfc(wall: Wall, ctx: IfcCtx): IfcProductHandle | null {
   if (!wall.hasInfill) {
     return null
   }
@@ -31,10 +28,29 @@ export function writeWallIfc(wall: Wall, ctx: IfcCtx): number | null {
   const dirY = dy / length
   const thickness = WALL_WIDTH / PIXELS_PER_METER
 
-  const placement = writeLocalPlacement(ctx.writer, ctx.refs.storeyPlacement, cx, cy, 0, dirX, dirY)
-  const shape = writeBoxShape(ctx.writer, ctx.refs.context, length, thickness, WALL_HEIGHT_METERS)
-
-  return ctx.writer.add(
-    `IFCWALLSTANDARDCASE('${ifcGuid()}',#${ctx.refs.ownerHistory},'Wall',$,$,#${placement},#${shape},$,.NOTDEFINED.)`,
+  const placement = makeLocalPlacement(
+    ctx.api,
+    ctx.modelID,
+    ctx.refs.storeyPlacement,
+    cx,
+    cy,
+    0,
+    dirX,
+    dirY,
   )
+  const shape = makeBoxShape(ctx.api, ctx.modelID, ctx.refs.context, length, thickness, WALL_HEIGHT_METERS)
+
+  const wallEntity = new IFC4.IfcWallStandardCase(
+    newGuid(ctx.api, ctx.modelID),
+    ctx.refs.ownerHistory,
+    new IFC4.IfcLabel('Wall'),
+    null,
+    null,
+    placement,
+    shape,
+    null,
+    IFC4.IfcWallTypeEnum.STANDARD,
+  )
+  ctx.api.WriteLine(ctx.modelID, wallEntity)
+  return new Handle<IFC4.IfcWallStandardCase>(wallEntity.expressID)
 }
