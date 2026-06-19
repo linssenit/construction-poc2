@@ -4,7 +4,6 @@ import { Button } from '@/components/ui/button'
 import { ThreeDViewer } from '@/components/ThreeDViewer'
 import { Toolbar } from '@/components/Toolbar'
 import { PropertiesPanel } from '@/components/PropertiesPanel'
-import { PIXELS_PER_METER } from '@/lib/dimensions'
 import { downloadIfc } from '@/lib/ifcExport'
 import { drawGrid, drawSnapIndicator } from '@/lib/canvas'
 import type { Point, Viewport } from '@/lib/geometry'
@@ -396,7 +395,7 @@ function App() {
             onPointerCancel={handlePointerUp}
           />
         ) : (
-          <ThreeDViewer elements={elements} pixelsPerMeter={PIXELS_PER_METER} />
+          <ThreeDViewer elements={elements} />
         )}
       </section>
 

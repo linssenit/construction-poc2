@@ -1,5 +1,4 @@
-import * as THREE from 'three'
-import { PIXELS_PER_METER, POLE_HEIGHT_METERS, POLE_SIZE_METERS, SOKKEL_HEIGHT_METERS, SOKKEL_SIZE_METERS } from '@/lib/dimensions'
+import { PIXELS_PER_METER, POLE_SIZE_METERS, SOKKEL_HEIGHT_METERS, SOKKEL_SIZE_METERS, POLE_HEIGHT_METERS } from '@/lib/dimensions'
 import { getDistance } from '@/lib/geometry'
 import type { Point } from '@/lib/geometry'
 import { Handle, IFC4 } from 'web-ifc'
@@ -7,27 +6,11 @@ import { makeBoxShape, makeLocalPlacement, newGuid } from '@/lib/ifc/writer'
 import type { ElementExtras, IfcCtx, IfcProductHandle } from '@/elements/types'
 import type { Wall } from '../types'
 
-const poleMaterial = new THREE.MeshStandardMaterial({ color: 0x8b6f47, roughness: 0.7 })
-const sokkelMaterial = new THREE.MeshStandardMaterial({ color: 0x3a4956, roughness: 0.5 })
-const sokkelGeometry = new THREE.BoxGeometry(SOKKEL_SIZE_METERS, SOKKEL_HEIGHT_METERS, SOKKEL_SIZE_METERS)
-const poleGeometry = new THREE.BoxGeometry(POLE_SIZE_METERS, POLE_HEIGHT_METERS, POLE_SIZE_METERS)
-
 const POLE_MERGE_TOLERANCE_METERS = POLE_SIZE_METERS
 
 export const wallPolesExtras: ElementExtras<Wall> = {
   draw2d(walls, ctx) {
     drawPoleAngles(ctx.ctx, walls)
-  },
-  build3d(walls, ctx) {
-    for (const { x, z } of getUniqueEndpointsMeters(walls)) {
-      const sokkel = new THREE.Mesh(sokkelGeometry, sokkelMaterial)
-      sokkel.position.set(x, SOKKEL_HEIGHT_METERS / 2, z)
-      ctx.group.add(sokkel)
-
-      const pole = new THREE.Mesh(poleGeometry, poleMaterial)
-      pole.position.set(x, SOKKEL_HEIGHT_METERS + POLE_HEIGHT_METERS / 2, z)
-      ctx.group.add(pole)
-    }
   },
   writeIfc(walls, ctx) {
     const handles: IfcProductHandle[] = []
@@ -100,24 +83,6 @@ function writePole(ctx: IfcCtx, x: number, y: number): IfcProductHandle {
   )
   ctx.api.WriteLine(ctx.modelID, entity)
   return new Handle<IFC4.IfcColumn>(entity.expressID)
-}
-
-function getUniqueEndpointsMeters(walls: Wall[]): Array<{ x: number; z: number }> {
-  const seen = new Map<string, { x: number; z: number }>()
-
-  for (const wall of walls) {
-    for (const point of [wall.start, wall.end]) {
-      const x = point.x / PIXELS_PER_METER
-      const z = point.y / PIXELS_PER_METER
-      const key = `${Math.round(x * 1000)}_${Math.round(z * 1000)}`
-
-      if (!seen.has(key)) {
-        seen.set(key, { x, z })
-      }
-    }
-  }
-
-  return [...seen.values()]
 }
 
 function getUniqueEndpointsForIfc(walls: Wall[]): Array<[number, number]> {

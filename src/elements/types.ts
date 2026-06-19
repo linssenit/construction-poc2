@@ -1,5 +1,4 @@
 import type { ComponentType, ReactNode } from 'react'
-import type * as THREE from 'three'
 import type { Handle, IfcAPI, IFC4 } from 'web-ifc'
 import type { Point } from '@/lib/geometry'
 import type { SharedRefs } from '@/lib/ifc/writer'
@@ -44,12 +43,6 @@ export interface Draw2dCtx {
   allElements: ElementCollection
 }
 
-export interface Build3dCtx {
-  group: THREE.Group
-  pixelsPerMeter: number
-  allElements: ElementCollection
-}
-
 export interface IfcCtx {
   api: IfcAPI
   modelID: number
@@ -68,7 +61,6 @@ export interface ToolCtx {
 
 export interface ElementExtras<E extends BaseElement> {
   draw2d?: (elements: E[], ctx: Omit<Draw2dCtx, 'selected' | 'isDraft'>) => void
-  build3d?: (elements: E[], ctx: Build3dCtx) => void
   writeIfc?: (elements: E[], ctx: IfcCtx) => IfcProductHandle[]
   getSnapPoints?: (elements: E[]) => SnapPoint[]
 }
@@ -96,7 +88,6 @@ export interface ElementModule<E extends BaseElement, D = E> {
   moveBy: (element: E, delta: Point) => E
   moveHandle?: (element: E, handleId: string, ctx: ToolCtx) => E
 
-  build3d: (element: E, ctx: Build3dCtx) => void
   writeIfc: (element: E, ctx: IfcCtx) => IfcProductHandle | null
 
   renderProperties?: (props: { element: E; onChange: (next: E) => void }) => ReactNode

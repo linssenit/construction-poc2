@@ -1,22 +1,27 @@
 import { useEffect, useRef } from 'react'
 import * as THREE from 'three'
 import * as OBC from '@thatopen/components'
-import { ELEMENT_MODULES, MODULE_ORDER } from '@/elements/registry'
+import workerUrl from '@thatopen/fragments/worker?url'
+import { generateIfc } from '@/lib/ifcExport'
 import type { ElementCollection } from '@/elements/types'
 
 type ThreeDViewerProps = {
   elements: ElementCollection
-  pixelsPerMeter: number
 }
 
-const STRUCTURE_GROUP_NAME = 'structure'
+const MODEL_NAME = 'kommerce-structure'
 
-export function ThreeDViewer({ elements, pixelsPerMeter }: ThreeDViewerProps) {
+type ViewerHandle = {
+  components: OBC.Components
+  world: OBC.SimpleWorld<OBC.SimpleScene, OBC.SimpleCamera, OBC.SimpleRenderer>
+  fragments: OBC.FragmentsManager
+  ifcLoader: OBC.IfcLoader
+  ready: Promise<void>
+}
+
+export function ThreeDViewer({ elements }: ThreeDViewerProps) {
   const containerRef = useRef<HTMLDivElement | null>(null)
-  const worldRef = useRef<{
-    components: OBC.Components
-    world: OBC.SimpleWorld<OBC.SimpleScene, OBC.SimpleCamera, OBC.SimpleRenderer>
-  } | null>(null)
+  const viewerRef = useRef<ViewerHandle | null>(null)
 
   useEffect(() => {
     const container = containerRef.current
@@ -37,66 +42,68 @@ export function ThreeDViewer({ elements, pixelsPerMeter }: ThreeDViewerProps) {
     world.scene.setup()
     world.scene.three.background = new THREE.Color('#f3f2ef')
 
-    const grid = new THREE.GridHelper(40, 40, 0xd2cec7, 0xe4e1dc)
-    world.scene.three.add(grid)
 
     world.camera.controls.setLookAt(8, 8, 8, 0, 0, 0)
 
-    worldRef.current = { components, world }
+    const fragments = components.get(OBC.FragmentsManager)
+    fragments.init(workerUrl)
+    // Fragments render lazily; refresh whenever the camera settles or a model loads.
+    world.camera.controls.addEventListener('rest', () => void fragments.core.update(true))
+
+    fragments.list.onItemSet.add(({ value: model }) => {
+      model.useCamera(world.camera.three)
+      world.scene.three.add(model.object)
+      void fragments.core.update(true)
+    })
+
+    const grids = components.get(OBC.Grids);
+    grids.create(world);
+
+
+    const ifcLoader = components.get(OBC.IfcLoader)
+    ifcLoader.settings.wasm = { path: '/', absolute: true }
+    const ready = ifcLoader.setup({ autoSetWasm: false })
+
+    viewerRef.current = { components, world, fragments, ifcLoader, ready }
 
     return () => {
       components.dispose()
-      worldRef.current = null
+      viewerRef.current = null
     }
   }, [])
 
   useEffect(() => {
-    const entry = worldRef.current
+    const viewer = viewerRef.current
 
-    if (!entry) {
+    if (!viewer) {
       return
     }
 
-    const { world } = entry
-    const scene = world.scene.three
-    const previous = scene.getObjectByName(STRUCTURE_GROUP_NAME)
+    let cancelled = false
 
-    if (previous) {
-      scene.remove(previous)
-      disposeGroup(previous)
+    const sync = async () => {
+      await viewer.ready
+
+      const bytes = await generateIfc(elements)
+      if (cancelled) {
+        return
+      }
+
+      if (viewer.fragments.list.has(MODEL_NAME)) {
+        await viewer.fragments.core.disposeModel(MODEL_NAME)
+      }
+      if (!cancelled) {
+        await viewer.ifcLoader.load(bytes, true, MODEL_NAME)
+      }
+
     }
 
-    const group = buildStructureGroup(elements, pixelsPerMeter)
-    scene.add(group)
-  }, [elements, pixelsPerMeter])
+    void sync()
+
+    return () => {
+      cancelled = true
+    }
+  }, [elements])
 
   return <div ref={containerRef} className="drawing-canvas" aria-label="3D construction view" />
-}
-
-function buildStructureGroup(elements: ElementCollection, pixelsPerMeter: number) {
-  const group = new THREE.Group()
-  group.name = STRUCTURE_GROUP_NAME
-
-  for (const type of MODULE_ORDER) {
-    const mod = ELEMENT_MODULES[type]
-    const slice = elements[type] ?? []
-
-    for (const el of slice) {
-      mod.build3d(el, { group, pixelsPerMeter, allElements: elements })
-    }
-
-    if (mod.extras?.build3d) {
-      mod.extras.build3d(slice, { group, pixelsPerMeter, allElements: elements })
-    }
-  }
-
-  return group
-}
-
-function disposeGroup(group: THREE.Object3D) {
-  group.traverse((child) => {
-    if (child instanceof THREE.Mesh) {
-      child.geometry.dispose()
-    }
-  })
 }

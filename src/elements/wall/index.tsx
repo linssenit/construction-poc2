@@ -4,7 +4,6 @@ import { hitTestWall } from './hitTest'
 import { getWallSnapPoints } from './snap'
 import { beginWallDraft, commitWallDraft, updateWallDraft } from './tool'
 import { moveWallBy, moveWallHandle } from './move'
-import { buildWallMesh } from './build3d'
 import { writeWallIfc } from './ifc'
 import { WallProperties } from './properties'
 import { WallIcon } from './icon'
@@ -40,7 +39,6 @@ export const wallModule: ElementModule<Wall, WallDraft> = {
   moveBy: moveWallBy,
   moveHandle: moveWallHandle,
 
-  build3d: buildWallMesh,
   writeIfc: writeWallIfc,
 
   renderProperties: WallProperties,

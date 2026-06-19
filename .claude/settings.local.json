@@ -1,7 +1,18 @@
 {
   "permissions": {
     "allow": [
-      "WebFetch(domain:docs.thatopen.com)"
+      "WebFetch(domain:docs.thatopen.com)",
+      "Bash(awk '/export declare class IfcLoader/,/^}/' node_modules/@thatopen/components/dist/index.d.ts)",
+      "Bash(awk '/export declare class FragmentsManager/,/^}/' node_modules/@thatopen/components/dist/index.d.ts)",
+      "Bash(awk '/class IfcFragmentSettings/,/^}/' node_modules/@thatopen/components/dist/index.d.ts)",
+      "Bash(node -e \"console.log\\(require.resolve\\('@thatopen/fragments'\\)\\)\")",
+      "Bash(cp node_modules/web-ifc/web-ifc.wasm public/web-ifc.wasm)",
+      "Bash(cp node_modules/web-ifc/web-ifc-mt.wasm public/web-ifc-mt.wasm)",
+      "Bash(cp node_modules/web-ifc/web-ifc-mt.worker.js public/)",
+      "Bash(pnpm add *)",
+      "Bash(node -e \"console.log\\(require.resolve\\('playwright'\\)\\)\")",
+      "Bash(node -e \"console.log\\(require.resolve\\('puppeteer'\\)\\)\")",
+      "Read(//Applications/Google Chrome.app/**)"
     ]
   }
 }
