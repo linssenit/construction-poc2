@@ -113,23 +113,32 @@
   padding: 8px;
 }
 
+.view-switch,
 .zoom-controls {
-  top: 194px;
   right: 28px;
   display: grid;
   gap: 4px;
-  width: auto;
+  width: 52px;
   padding: 6px;
-  place-items: center;
+  justify-items: stretch;
+}
+
+.view-switch button,
+.zoom-controls button {
+  width: 100%;
 }
 
 .view-switch {
   top: 110px;
-  right: 28px;
-  display: grid;
-  gap: 4px;
-  padding: 6px;
-  place-items: center;
+}
+
+.zoom-controls {
+  top: 198px;
+}
+
+.zoom-percentage {
+  text-align: center;
+  padding: 2px 0;
 }
 
 .unit-switch {

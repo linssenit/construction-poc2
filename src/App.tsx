@@ -6,6 +6,7 @@ import { Toolbar } from '@/components/Toolbar'
 import { PropertiesPanel } from '@/components/PropertiesPanel'
 import { downloadIfc } from '@/lib/ifcExport'
 import { drawGrid, drawSnapIndicator } from '@/lib/canvas'
+import type { Unit } from '@/lib/dimensions'
 import type { Point, Viewport } from '@/lib/geometry'
 import { clamp, screenToWorldPoint } from '@/lib/geometry'
 import {
@@ -26,7 +27,6 @@ import type {
 } from '@/elements/types'
 import './App.css'
 
-type Unit = 'mm' | 'cm' | 'm'
 type ViewMode = '2d' | '3d'
 
 const MIN_ZOOM = 0.45
@@ -102,6 +102,7 @@ function App() {
         draft,
         selected,
         snapTarget,
+        unit,
       })
     }
 
@@ -111,7 +112,7 @@ function App() {
     resizeObserver.observe(canvasWrap)
 
     return () => resizeObserver.disconnect()
-  }, [elements, draft, selected, snapTarget, viewport, viewMode])
+  }, [elements, draft, selected, snapTarget, viewport, viewMode, unit])
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -366,14 +367,11 @@ function App() {
     <main className="construction-viewer" aria-label="Construction Viewer">
       <header className="app-header">
         <div className="brand">
-          <span className="brand-mark bg-primary text-primary-foreground border-none text-sm" aria-hidden="true">
-            CV
-          </span>
-          <span className="tracking-tight">kommerce</span>
+          <span className="tracking-tight">Boomkamer</span>
         </div>
         <div className="project-title">
           <span>Project</span>
-          <strong>Example</strong>
+          <strong>Voorbeeld 01</strong>
         </div>
         <div className="header-actions">
           <Button size="sm" className="h-9 px-4 gap-2" onClick={() => { void downloadIfc(elements) }}>
@@ -401,27 +399,29 @@ function App() {
 
       <Toolbar activeToolId={activeToolId} onSelectTool={setActiveToolId} />
 
-      <div className="floating-panel zoom-controls" aria-label="Zoom controls">
-        <Button
-          variant="secondary"
-          size="icon"
-          className="h-8 w-8"
-          aria-label="Zoom in"
-          onClick={() => zoomAround(viewport.scale * 1.12)}
-        >
-          +
-        </Button>
-        <span className="text-[10px] font-bold text-muted-foreground">{zoomPercentage}%</span>
-        <Button
-          variant="secondary"
-          size="icon"
-          className="h-8 w-8"
-          aria-label="Zoom out"
-          onClick={() => zoomAround(viewport.scale / 1.12)}
-        >
-          -
-        </Button>
-      </div>
+      {viewMode === '2d' && (
+        <div className="floating-panel zoom-controls" aria-label="Zoom controls">
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-8 w-10"
+            aria-label="Zoom in"
+            onClick={() => zoomAround(viewport.scale * 1.12)}
+          >
+            +
+          </Button>
+          <span className="zoom-percentage text-[10px] font-bold text-muted-foreground">{zoomPercentage}%</span>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-8 w-10"
+            aria-label="Zoom out"
+            onClick={() => zoomAround(viewport.scale / 1.12)}
+          >
+            -
+          </Button>
+        </div>
+      )}
 
       <div className="floating-panel view-switch" aria-label="View mode">
         {(['2d', '3d'] as const).map((mode) => (
@@ -441,19 +441,21 @@ function App() {
         <PropertiesPanel selection={selected} elements={elements} onChange={handlePropertiesChange} />
       )}
 
-      <div className="floating-panel unit-switch p-1 gap-1" aria-label="Size unit">
-        {(['mm', 'cm', 'm'] as const).map((sizeUnit) => (
-          <Button
-            key={sizeUnit}
-            variant={unit === sizeUnit ? 'default' : 'ghost'}
-            size="sm"
-            className="h-8 px-3"
-            onClick={() => setUnit(sizeUnit)}
-          >
-            {sizeUnit}
-          </Button>
-        ))}
-      </div>
+      {viewMode === '2d' && (
+        <div className="floating-panel unit-switch p-1 gap-1" aria-label="Size unit">
+          {(['mm', 'cm', 'm'] as const).map((sizeUnit) => (
+            <Button
+              key={sizeUnit}
+              variant={unit === sizeUnit ? 'default' : 'ghost'}
+              size="sm"
+              className="h-8 px-3"
+              onClick={() => setUnit(sizeUnit)}
+            >
+              {sizeUnit}
+            </Button>
+          ))}
+        </div>
+      )}
     </main>
   )
 }
@@ -468,9 +470,10 @@ function renderScene(
     draft: { type: ElementType; data: unknown } | null
     selected: SelectionRef | null
     snapTarget: SnapPoint | null
+    unit: Unit
   },
 ) {
-  const { viewport, elements, draft, selected, snapTarget } = options
+  const { viewport, elements, draft, selected, snapTarget, unit } = options
   const originX = width / 2 + viewport.x
   const originY = height / 2 + viewport.y
 
@@ -494,6 +497,7 @@ function renderScene(
         scale: viewport.scale,
         selected: selected?.type === type && selected.id === el.id,
         isDraft: false,
+        unit,
         allElements: elements,
       })
     }
@@ -502,6 +506,7 @@ function renderScene(
       mod.extras.draw2d(slice, {
         ctx: context,
         scale: viewport.scale,
+        unit,
         allElements: elements,
       })
     }
@@ -514,6 +519,7 @@ function renderScene(
       scale: viewport.scale,
       selected: false,
       isDraft: true,
+      unit,
       allElements: elements,
     })
   }

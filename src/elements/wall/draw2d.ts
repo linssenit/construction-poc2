@@ -7,6 +7,7 @@ import {
   offsetPoint,
 } from '@/lib/geometry'
 import { drawDimensionLine, drawHandle, formatDistance } from '@/lib/canvas'
+import type { Unit } from '@/lib/dimensions'
 import type { Draw2dCtx } from '@/elements/types'
 import type { Wall } from './types'
 import { WALL_WIDTH } from './types'
@@ -23,7 +24,7 @@ export function drawWall(wall: Wall, ctx: Draw2dCtx) {
   }
 }
 
-export function drawWallDistanceLabels(walls: Wall[], context: CanvasRenderingContext2D) {
+export function drawWallDistanceLabels(walls: Wall[], context: CanvasRenderingContext2D, unit: Unit) {
   if (walls.length === 0) {
     return
   }
@@ -32,7 +33,7 @@ export function drawWallDistanceLabels(walls: Wall[], context: CanvasRenderingCo
 
   for (const wall of walls) {
     const outward = getOutwardNormal(wall, centroid)
-    drawDistanceLabel(context, wall, outward)
+    drawDistanceLabel(context, wall, outward, unit)
   }
 }
 
@@ -110,7 +111,7 @@ function drawWallGuides(context: CanvasRenderingContext2D, wall: Wall, draft: bo
   context.restore()
 }
 
-function drawDistanceLabel(context: CanvasRenderingContext2D, wall: Wall, normal: Point) {
+function drawDistanceLabel(context: CanvasRenderingContext2D, wall: Wall, normal: Point, unit: Unit) {
   const wallLength = getDistance(wall.start, wall.end)
 
   if (wallLength === 0) {
@@ -141,7 +142,7 @@ function drawDistanceLabel(context: CanvasRenderingContext2D, wall: Wall, normal
       innerOffset,
     )
 
-    drawDimensionLine(context, innerStart, innerEnd, formatDistance(innerLength), 'secondary')
+    drawDimensionLine(context, innerStart, innerEnd, formatDistance(innerLength, unit), 'secondary')
   }
 
   const outerStart = offsetPoint(
@@ -155,7 +156,7 @@ function drawDistanceLabel(context: CanvasRenderingContext2D, wall: Wall, normal
     outerOffset,
   )
 
-  drawDimensionLine(context, outerStart, outerEnd, formatDistance(outerLength), 'primary')
+  drawDimensionLine(context, outerStart, outerEnd, formatDistance(outerLength, unit), 'primary')
 }
 
 function computeWallsCentroid(walls: Wall[]): Point {

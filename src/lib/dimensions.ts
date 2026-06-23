@@ -1,3 +1,5 @@
+export type Unit = 'mm' | 'cm' | 'm'
+
 export const PIXELS_PER_METER = 40
 
 export const POLE_SIZE_METERS = 0.17

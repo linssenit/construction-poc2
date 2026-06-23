@@ -1,4 +1,5 @@
 import { PIXELS_PER_METER } from '@/lib/dimensions'
+import type { Unit } from '@/lib/dimensions'
 import type { Point } from '@/lib/geometry'
 import { getDistance } from '@/lib/geometry'
 
@@ -151,6 +152,15 @@ function drawArrowhead(context: CanvasRenderingContext2D, tip: Point, angle: num
   context.fill()
 }
 
-export function formatDistance(distance: number): string {
-  return `${(distance / PIXELS_PER_METER).toFixed(2)} m`
+export function formatDistance(distance: number, unit: Unit = 'm'): string {
+  const meters = distance / PIXELS_PER_METER
+
+  switch (unit) {
+    case 'mm':
+      return `${Math.round(meters * 1000)} mm`
+    case 'cm':
+      return `${(meters * 100).toFixed(1)} cm`
+    case 'm':
+      return `${meters.toFixed(2)} m`
+  }
 }

@@ -46,7 +46,7 @@ export const wallModule: ElementModule<Wall, WallDraft> = {
 
   extras: {
     draw2d(walls, ctx) {
-      drawWallDistanceLabels(walls, ctx.ctx)
+      drawWallDistanceLabels(walls, ctx.ctx, ctx.unit)
       wallPolesExtras.draw2d?.(walls, ctx)
       // Edge beams are intentionally not drawn in 2D — IFC/3D only.
     },

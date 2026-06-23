@@ -1,6 +1,7 @@
 import type { ComponentType, ReactNode } from 'react'
 import type { Handle, IfcAPI, IFC4 } from 'web-ifc'
 import type { Point } from '@/lib/geometry'
+import type { Unit } from '@/lib/dimensions'
 import type { SharedRefs } from '@/lib/ifc/writer'
 
 export type ElementType = string
@@ -40,6 +41,7 @@ export interface Draw2dCtx {
   scale: number
   selected: boolean
   isDraft: boolean
+  unit: Unit
   allElements: ElementCollection
 }
 
