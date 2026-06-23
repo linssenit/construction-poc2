@@ -92,10 +92,24 @@ export function ThreeDViewer({ elements }: ThreeDViewerProps) {
       if (viewer.fragments.list.has(MODEL_NAME)) {
         await viewer.fragments.core.disposeModel(MODEL_NAME)
       }
-      if (!cancelled) {
-        await viewer.ifcLoader.load(bytes, true, MODEL_NAME)
+      if (cancelled) {
+        return
       }
 
+      await viewer.ifcLoader.load(bytes, true, MODEL_NAME)
+      if (cancelled) {
+        return
+      }
+
+      // The grid is an infinite shader plane fixed at world Y=0; it can't be
+      // moved. Instead, drop the model so its base rests on that plane, leaving
+      // the grid at the bottom of the model rather than slicing through it.
+      const model = viewer.fragments.list.get(MODEL_NAME)
+      if (model && Number.isFinite(model.box.min.y)) {
+        model.object.position.y -= model.box.min.y
+        model.object.updateMatrixWorld(true)
+        await viewer.fragments.core.update(true)
+      }
     }
 
     void sync()

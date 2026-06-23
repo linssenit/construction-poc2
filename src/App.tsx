@@ -373,7 +373,7 @@ function App() {
         </div>
         <div className="project-title">
           <span>Project</span>
-          <strong>Example House</strong>
+          <strong>Example</strong>
         </div>
         <div className="header-actions">
           <Button size="sm" className="h-9 px-4 gap-2" onClick={() => { void downloadIfc(elements) }}>

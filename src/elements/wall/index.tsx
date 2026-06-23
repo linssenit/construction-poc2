@@ -8,6 +8,7 @@ import { writeWallIfc } from './ifc'
 import { WallProperties } from './properties'
 import { WallIcon } from './icon'
 import { wallPolesExtras } from './extras/poles'
+import { wallEdgeBeamsExtras } from './extras/edgeBeams'
 import type { Wall, WallDraft } from './types'
 import { WALL_TYPE } from './types'
 
@@ -44,10 +45,16 @@ export const wallModule: ElementModule<Wall, WallDraft> = {
   renderProperties: WallProperties,
 
   extras: {
-    ...wallPolesExtras,
     draw2d(walls, ctx) {
       drawWallDistanceLabels(walls, ctx.ctx)
       wallPolesExtras.draw2d?.(walls, ctx)
+      // Edge beams are intentionally not drawn in 2D — IFC/3D only.
+    },
+    writeIfc(walls, ctx) {
+      return [
+        ...(wallPolesExtras.writeIfc?.(walls, ctx) ?? []),
+        ...(wallEdgeBeamsExtras.writeIfc?.(walls, ctx) ?? []),
+      ]
     },
   },
 }

@@ -67,6 +67,9 @@ export function makeLocalPlacement(
   return write(api, modelID, placement)
 }
 
+/** RGB in the 0..1 range, used to colour a shape's surfaces in the 3D render. */
+export type Rgb = readonly [red: number, green: number, blue: number]
+
 export function makeBoxShape(
   api: IfcAPI,
   modelID: number,
@@ -74,6 +77,7 @@ export function makeBoxShape(
   xDim: number,
   yDim: number,
   height: number,
+  color?: Rgb,
 ): Handle<IFC4.IfcProductDefinitionShape> {
   const profile = new IFC4.IfcRectangleProfileDef(
     IFC4.IfcProfileTypeEnum.AREA,
@@ -89,17 +93,51 @@ export function makeBoxShape(
     direction3d(0, 0, 1),
     new IFC4.IfcPositiveLengthMeasure(height),
   )
+  // Write the solid first so the (optional) style can reference it by handle.
+  const solidHandle = write(api, modelID, solid)
+
+  if (color) {
+    writeSurfaceStyle(api, modelID, solidHandle, color)
+  }
 
   const shape = new IFC4.IfcProductDefinitionShape(null, null, [
     new IFC4.IfcShapeRepresentation(
       context,
       new IFC4.IfcLabel('Body'),
       new IFC4.IfcLabel('SweptSolid'),
-      [solid],
+      [solidHandle],
     ),
   ])
 
   return write(api, modelID, shape)
+}
+
+/** Attaches a flat-colour surface style to a geometric representation item. */
+function writeSurfaceStyle(
+  api: IfcAPI,
+  modelID: number,
+  item: Handle<IFC4.IfcRepresentationItem>,
+  [red, green, blue]: Rgb,
+): void {
+  const colour = new IFC4.IfcColourRgb(
+    null,
+    new IFC4.IfcNormalisedRatioMeasure(red),
+    new IFC4.IfcNormalisedRatioMeasure(green),
+    new IFC4.IfcNormalisedRatioMeasure(blue),
+  )
+  const rendering = new IFC4.IfcSurfaceStyleRendering(
+    colour,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    IFC4.IfcReflectanceMethodEnum.NOTDEFINED,
+  )
+  const surfaceStyle = new IFC4.IfcSurfaceStyle(null, IFC4.IfcSurfaceSide.BOTH, [rendering])
+  write(api, modelID, new IFC4.IfcStyledItem(item, [surfaceStyle], null))
 }
 
 export function writeProjectScaffold(api: IfcAPI, modelID: number): ScaffoldResult {

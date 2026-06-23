@@ -1,4 +1,4 @@
-import { PIXELS_PER_METER, POLE_SIZE_METERS, SOKKEL_HEIGHT_METERS, SOKKEL_SIZE_METERS, POLE_HEIGHT_METERS } from '@/lib/dimensions'
+import { PIXELS_PER_METER, POLE_SIZE_METERS, SOKKEL_HEIGHT_METERS, SOKKEL_SIZE_METERS, POLE_HEIGHT_METERS, SOKKEL_COLOR, POLE_COLOR } from '@/lib/dimensions'
 import { getDistance } from '@/lib/geometry'
 import type { Point } from '@/lib/geometry'
 import { Handle, IFC4 } from 'web-ifc'
@@ -33,6 +33,7 @@ function writeSokkel(ctx: IfcCtx, x: number, y: number): IfcProductHandle {
     SOKKEL_SIZE_METERS,
     SOKKEL_SIZE_METERS,
     SOKKEL_HEIGHT_METERS,
+    SOKKEL_COLOR,
   )
 
   const entity = new IFC4.IfcFooting(
@@ -68,6 +69,7 @@ function writePole(ctx: IfcCtx, x: number, y: number): IfcProductHandle {
     POLE_SIZE_METERS,
     POLE_SIZE_METERS,
     POLE_HEIGHT_METERS,
+    POLE_COLOR,
   )
 
   const entity = new IFC4.IfcColumn(
