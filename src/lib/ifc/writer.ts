@@ -140,6 +140,36 @@ function writeSurfaceStyle(
   write(api, modelID, new IFC4.IfcStyledItem(item, [surfaceStyle], null))
 }
 
+/**
+ * Associates a single named material with a set of products via one shared
+ * `IfcMaterial` + `IfcRelAssociatesMaterial`. No-op for an empty product list.
+ */
+export function writeMaterialAssociation(
+  api: IfcAPI,
+  modelID: number,
+  ownerHistory: Handle<IFC4.IfcOwnerHistory>,
+  name: string,
+  products: Handle<IFC4.IfcProduct>[],
+): void {
+  if (products.length === 0) {
+    return
+  }
+
+  const material = write(api, modelID, new IFC4.IfcMaterial(new IFC4.IfcLabel(name), null, null))
+  write(
+    api,
+    modelID,
+    new IFC4.IfcRelAssociatesMaterial(
+      newGuid(api, modelID),
+      ownerHistory,
+      null,
+      null,
+      products,
+      material,
+    ),
+  )
+}
+
 export function writeProjectScaffold(api: IfcAPI, modelID: number): ScaffoldResult {
   const person = write(api, modelID, new IFC4.IfcPerson(null, null, null, null, null, null, null, null))
   const org = write(api, modelID, new IFC4.IfcOrganization(null, new IFC4.IfcLabel('Kommerce'), null, null, null))

@@ -2,25 +2,34 @@ import { PIXELS_PER_METER, POLE_SIZE_METERS, SOKKEL_HEIGHT_METERS, SOKKEL_SIZE_M
 import { getDistance } from '@/lib/geometry'
 import type { Point } from '@/lib/geometry'
 import { Handle, IFC4 } from 'web-ifc'
-import { makeBoxShape, makeLocalPlacement, newGuid } from '@/lib/ifc/writer'
+import { makeBoxShape, makeLocalPlacement, newGuid, writeMaterialAssociation } from '@/lib/ifc/writer'
 import type { ElementExtras, IfcCtx, IfcProductHandle } from '@/elements/types'
 import type { Wall } from '../types'
 
 const POLE_MERGE_TOLERANCE_METERS = POLE_SIZE_METERS
+
+// Materials these products are made of. Single source of truth for both the IFC
+// output (written via IfcRelAssociatesMaterial) and the bill of materials.
+export const POLE_MATERIAL = 'Douglas'
+export const SOKKEL_MATERIAL = 'Belgisch hardsteen'
 
 export const wallPolesExtras: ElementExtras<Wall> = {
   draw2d(walls, ctx) {
     drawPoleAngles(ctx.ctx, walls)
   },
   writeIfc(walls, ctx) {
-    const handles: IfcProductHandle[] = []
+    const sokkels: IfcProductHandle[] = []
+    const poles: IfcProductHandle[] = []
 
-    for (const [x, y] of getUniqueEndpointsForIfc(walls)) {
-      handles.push(writeSokkel(ctx, x, y))
-      handles.push(writePole(ctx, x, y))
+    for (const [x, y] of getPoleNodes(walls)) {
+      sokkels.push(writeSokkel(ctx, x, y))
+      poles.push(writePole(ctx, x, y))
     }
 
-    return handles
+    writeMaterialAssociation(ctx.api, ctx.modelID, ctx.refs.ownerHistory, POLE_MATERIAL, poles)
+    writeMaterialAssociation(ctx.api, ctx.modelID, ctx.refs.ownerHistory, SOKKEL_MATERIAL, sokkels)
+
+    return [...sokkels, ...poles]
   },
 }
 
@@ -87,7 +96,12 @@ function writePole(ctx: IfcCtx, x: number, y: number): IfcProductHandle {
   return new Handle<IFC4.IfcColumn>(entity.expressID)
 }
 
-function getUniqueEndpointsForIfc(walls: Wall[]): Array<[number, number]> {
+/**
+ * Unique pole/sokkel positions (in metres): one per wall endpoint after merging
+ * endpoints that fall within the pole footprint. Shared by the IFC writer and
+ * the bill-of-materials so both count the same nodes.
+ */
+export function getPoleNodes(walls: Wall[]): Array<[number, number]> {
   const points: Array<[number, number]> = []
 
   for (const wall of walls) {

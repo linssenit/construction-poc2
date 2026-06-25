@@ -9,9 +9,13 @@ import {
   POLE_TOP_METERS,
 } from '@/lib/dimensions'
 import type { Point } from '@/lib/geometry'
-import { makeBoxShape, makeLocalPlacement, newGuid } from '@/lib/ifc/writer'
+import { makeBoxShape, makeLocalPlacement, newGuid, writeMaterialAssociation } from '@/lib/ifc/writer'
 import type { ElementExtras, IfcCtx, IfcProductHandle } from '@/elements/types'
 import type { Wall } from '../types'
+
+// Material the edge beams are made of. Single source of truth for both the IFC
+// output (written via IfcRelAssociatesMaterial) and the bill of materials.
+export const EDGE_BEAM_MATERIAL = 'Douglas'
 
 // Endpoints this close are treated as the same node (same pole). Matches the
 // pole-merge tolerance so a beam always connects two poles, not phantom points.
@@ -38,11 +42,13 @@ const BEAM_HALF_WIDTH_METERS = EDGE_BEAM_WIDTH_METERS / 2
  */
 export const wallEdgeBeamsExtras: ElementExtras<Wall> = {
   writeIfc(walls, ctx) {
-    return buildEdgeBeams(walls).map((segment) => writeEdgeBeam(ctx, segment.a, segment.b))
+    const beams = buildEdgeBeams(walls).map((segment) => writeEdgeBeam(ctx, segment.a, segment.b))
+    writeMaterialAssociation(ctx.api, ctx.modelID, ctx.refs.ownerHistory, EDGE_BEAM_MATERIAL, beams)
+    return beams
   },
 }
 
-interface Segment {
+export interface Segment {
   a: Point
   b: Point
 }
@@ -57,7 +63,7 @@ interface LoopBeam {
  * pole covers the top while shorter beams butt against it. Endpoints are
  * returned in metres, ready to extrude.
  */
-function buildEdgeBeams(walls: Wall[]): Segment[] {
+export function buildEdgeBeams(walls: Wall[]): Segment[] {
   const { nodes, beams } = findLoopGraph(walls)
 
   // Work in metres from here on.

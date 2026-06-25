@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import type { PointerEvent } from 'react'
 import { Button } from '@/components/ui/button'
 import { ThreeDViewer } from '@/components/ThreeDViewer'
+import { BomFooter } from '@/components/BomFooter'
 import { Toolbar } from '@/components/Toolbar'
 import { PropertiesPanel } from '@/components/PropertiesPanel'
 import { downloadIfc } from '@/lib/ifcExport'
@@ -396,6 +397,8 @@ function App() {
           <ThreeDViewer elements={elements} />
         )}
       </section>
+
+      {viewMode === '3d' && <BomFooter elements={elements} />}
 
       <Toolbar activeToolId={activeToolId} onSelectTool={setActiveToolId} />
 
