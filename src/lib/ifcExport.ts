@@ -7,10 +7,10 @@ export async function generateIfc(elements: ElementCollection): Promise<Uint8Arr
   const api = await getIfcAPI()
   const modelID = api.CreateModel({
     schema: IFC_SCHEMA,
-    name: 'kommerce-export.ifc',
+    name: 'boomkamer-export.ifc',
     description: ['ViewDefinition [CoordinationView]'],
-    authors: ['Kommerce Construction Viewer'],
-    organizations: ['Kommerce'],
+    authors: ['Boomkamer Construction Viewer'],
+    organizations: ['Boomkamer'],
   })
 
   try {
@@ -41,7 +41,7 @@ export async function generateIfc(elements: ElementCollection): Promise<Uint8Arr
   }
 }
 
-export async function downloadIfc(elements: ElementCollection, filename = 'kommerce-export.ifc') {
+export async function downloadIfc(elements: ElementCollection, filename = 'boomkamer-export.ifc') {
   const bytes = await generateIfc(elements)
   const blob = new Blob([bytes as BlobPart], { type: 'application/x-step' })
   const url = URL.createObjectURL(blob)

@@ -172,7 +172,7 @@ export function writeMaterialAssociation(
 
 export function writeProjectScaffold(api: IfcAPI, modelID: number): ScaffoldResult {
   const person = write(api, modelID, new IFC4.IfcPerson(null, null, null, null, null, null, null, null))
-  const org = write(api, modelID, new IFC4.IfcOrganization(null, new IFC4.IfcLabel('Kommerce'), null, null, null))
+  const org = write(api, modelID, new IFC4.IfcOrganization(null, new IFC4.IfcLabel('Boomkamer'), null, null, null))
   const personOrg = write(api, modelID, new IFC4.IfcPersonAndOrganization(person, org, null))
   const app = write(
     api,
@@ -180,8 +180,8 @@ export function writeProjectScaffold(api: IfcAPI, modelID: number): ScaffoldResu
     new IFC4.IfcApplication(
       org,
       new IFC4.IfcLabel('1.0'),
-      new IFC4.IfcLabel('Kommerce Construction Viewer'),
-      new IFC4.IfcIdentifier('kommerce'),
+      new IFC4.IfcLabel('Boomkamer Construction Viewer'),
+      new IFC4.IfcIdentifier('Boomkamer'),
     ),
   )
   const ownerHistory = write(
